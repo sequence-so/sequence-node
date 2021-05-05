@@ -1,7 +1,18 @@
 {
   "compilerOptions": {
-    "target": "es5",
     "module": "commonjs",
-    "strict": true
-  }
+    "esModuleInterop": true,
+    "target": "es6",
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "outDir": "dist",
+    "baseUrl": ".",
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "lib": ["es2015"]
+  },
+  "include": ["src/**/*", "modules.d.ts", "./package.json"],
+  "exclude": ["node_modules", "./node_modules", "./node_modules/*", "./node_modules/@types/node/index.d.ts"]
 }
