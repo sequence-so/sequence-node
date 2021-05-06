@@ -1,4 +1,4 @@
-import { SequenceEvent, SequenceEventType } from '.';
+import { SequenceEvent, SequenceEventType } from './types';
 
 var type = require('component-type');
 var join = require('join-component');

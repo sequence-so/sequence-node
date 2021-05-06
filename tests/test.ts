@@ -1,4 +1,4 @@
-import { Server } from 'node:http';
+import { Server } from 'http';
 import sinon from 'ts-sinon';
 import express from 'express';
 import delay from 'delay';
@@ -6,7 +6,7 @@ import { expect, should as chaiShould } from 'chai';
 const should = chaiShould();
 const pify = require('pify');
 const version = require('../package.json').version;
-import Sequence, { APIEventPayload, SequenceEvent, SequenceOptions } from '../src/index';
+import Sequence, { APIEventPayload, SequenceEvent, SequenceOptions } from '../src/types';
 
 const spy = sinon.spy;
 const stub = sinon.stub;
@@ -41,10 +41,11 @@ let server: Server = null;
 before((done) => {
   server = express()
     .use(express.json())
-    .post('/event/batch', (req: any, res: any) => {
-      const { apiKey, batch } = req.body;
+    .post('/event/batch', (req: express.Request, res: any) => {
+      const { authorization } = req.headers;
+      const { batch } = req.body;
 
-      if (!apiKey) {
+      if (!authorization) {
         // console.log('shut it down 1');
         return res.status(400).json({
           error: { message: 'missing api key' },
@@ -245,7 +246,7 @@ describe('flush', () => {
     ];
 
     const data = await client.flush();
-    Object.keys(data).should.deep.eq(['apiKey', 'batch']);
+    Object.keys(data).should.deep.eq(['batch']);
     data.batch.should.deep.eq([messageA, messageB]);
     callbackA.calledOnce.should.be.true;
     callbackB.calledOnce.should.be.true;

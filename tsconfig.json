@@ -11,7 +11,9 @@
     "skipLibCheck": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "lib": ["es2015"]
+    "lib": ["es2015"],
+    "types": ["node"],
+    "typeRoots": ["./src", "../node_modules/@types"]
   },
   "include": ["src/**/*", "modules.d.ts", "./package.json"],
   "exclude": ["node_modules", "./node_modules", "./node_modules/*", "./node_modules/@types/node/index.d.ts"]
