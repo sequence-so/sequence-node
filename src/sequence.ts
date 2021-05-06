@@ -1,10 +1,10 @@
 import { APIEventPayload, CallbackFunction, SequenceEvent, SequenceEventType, SequenceOptions } from './types';
-const assert = require('assert');
-const removeSlash = require('remove-trailing-slash');
+import assert from 'assert';
+import removeSlash from 'remove-trailing-slash';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
-const ms = require('ms');
-const version = require('../package.json').version;
+import ms from 'ms';
+import { version } from '../package.json';
 import looselyValidate from './event-validation';
 
 import { QueueItem } from './types';
@@ -152,6 +152,7 @@ class Sequence {
     }
 
     if (!this.queue.length) {
+      console.log('no queue length');
       return setImmediate(callback);
     }
 
@@ -179,15 +180,17 @@ class Sequence {
       data,
       headers,
     };
+    console.log({ req });
 
     if (this.timeout) {
       req.timeout = typeof this.timeout === 'string' ? ms(this.timeout) : this.timeout;
     }
 
     axios(req)
-      .then(() => done())
+      .then(done)
       .catch((err: any) => {
         if (err.response) {
+          console.error(err);
           const error = new Error(err.response.statusText);
           return done(error);
         }

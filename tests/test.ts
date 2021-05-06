@@ -3,11 +3,11 @@ import sinon from 'ts-sinon';
 import express from 'express';
 import delay from 'delay';
 import { expect, should as chaiShould } from 'chai';
-const should = chaiShould();
-const pify = require('pify');
-const version = require('../package.json').version;
+import pify from 'pify';
 import Sequence, { APIEventPayload, SequenceEvent, SequenceOptions } from '../src/types';
+import { version } from '../package.json';
 
+const should = chaiShould();
 const spy = sinon.spy;
 const stub = sinon.stub;
 const noop = () => {};

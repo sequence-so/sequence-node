@@ -13,7 +13,8 @@
     "emitDecoratorMetadata": true,
     "lib": ["es2015"],
     "types": ["node"],
-    "typeRoots": ["./src", "../node_modules/@types"]
+    "typeRoots": ["./src", "../node_modules/@types"],
+    "resolveJsonModule": true
   },
   "include": ["src/**/*", "modules.d.ts", "./package.json"],
   "exclude": ["node_modules", "./node_modules", "./node_modules/*", "./node_modules/@types/node/index.d.ts"]
