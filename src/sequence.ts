@@ -3,10 +3,10 @@ import assert from 'assert';
 import removeSlash from 'remove-trailing-slash';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
-import ms from 'ms';
 import { version } from '../package.json';
 import looselyValidate from './event-validation';
-
+import uuid from 'uuid';
+const generateMessageId = uuid.v4;
 import { QueueItem } from './types';
 
 const setImmediate = global.setImmediate || process.nextTick.bind(process);
@@ -110,9 +110,10 @@ class Sequence {
       properties: {
         ...incomingEvent.properties,
         $library: 'sequence-node',
-        $library_version: version,
+        $libraryVersion: version,
       },
       timestamp: incomingEvent.timestamp ?? new Date(),
+      messageId: generateMessageId(),
     };
 
     this.queue.push({ message: event, callback });
@@ -152,7 +153,6 @@ class Sequence {
     }
 
     if (!this.queue.length) {
-      console.log('no queue length');
       return setImmediate(callback);
     }
 
@@ -164,8 +164,8 @@ class Sequence {
       batch: messages,
     };
 
-    const done = (err?: any) => {
-      callbacks.forEach((callback) => callback(err));
+    const done = (err?: any, data?: any) => {
+      callbacks.forEach((callback) => callback(err, data));
       callback && callback(err, data);
     };
 
@@ -180,14 +180,13 @@ class Sequence {
       data,
       headers,
     };
-    console.log({ req });
 
     if (this.timeout) {
-      req.timeout = typeof this.timeout === 'string' ? ms(this.timeout) : this.timeout;
+      req.timeout = this.timeout;
     }
 
     axios(req)
-      .then(done)
+      .then((res) => done(null, res))
       .catch((err: any) => {
         if (err.response) {
           console.error(err);

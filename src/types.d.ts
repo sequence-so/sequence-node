@@ -22,7 +22,7 @@ export interface SequenceEvent {
   /**
    * Timestamp of the event.
    */
-  timestamp?: Date;
+  timestamp?: string | Date;
   /**
    * Custom properties on the event.
    */
@@ -60,7 +60,11 @@ export interface SequenceEvent {
   /**
    * Defines which integrations get notified on this event.
    */
-  notifications?: string[];
+  notifications?: Notifications;
+}
+
+export interface Notifications {
+  discord: boolean | any;
 }
 
 export type APIEventPayload = SequenceEvent & {
@@ -68,12 +72,13 @@ export type APIEventPayload = SequenceEvent & {
   distinctId: string;
   properties: {
     $library: string;
-    $library_version: string;
+    $libraryVersion: string;
     [k: string]: any;
   };
+  messageId: string;
 };
 
-export type SequenceEventType = 'alert';
+export type SequenceEventType = 'alert' | 'alias' | 'track';
 
 export interface QueueItem {
   message: APIEventPayload;

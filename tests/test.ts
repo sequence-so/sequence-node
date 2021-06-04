@@ -17,10 +17,11 @@ const PAYLOAD: SequenceEvent = { timestamp: new Date(), name: 'My Custom Alert',
 const INTERNAL_PAYLOAD: APIEventPayload = {
   type: 'alert',
   distinctId: 'abcdef',
-  properties: { $library: 'sequence-node', $library_version: version },
+  properties: { $library: 'sequence-node', $libraryVersion: version },
   timestamp: new Date(),
   name: 'My Custom Alert',
   message: 'New customer',
+  messageId: 'random',
 };
 
 const createClient = (_options?: SequenceOptions) => {
@@ -318,7 +319,7 @@ describe('alert', () => {
       ...PAYLOAD,
       distinctId: '1234',
       type: 'alert',
-      properties: { ...PAYLOAD.properties, $library: 'sequence-node', $library_version: version },
+      properties: { ...PAYLOAD.properties, $library: 'sequence-node', $libraryVersion: version },
     };
 
     client.queue.length.should.eq(0);
