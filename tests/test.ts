@@ -4,7 +4,7 @@ import express from 'express';
 import delay from 'delay';
 import { expect, should as chaiShould } from 'chai';
 import pify from 'pify';
-import Sequence, { APIEventPayload, SequenceEvent, SequenceOptions } from '../src/types';
+import Sequence, { EventPayload, Track, SequenceOptions } from '../src/types';
 import { version } from '../package.json';
 
 const should = chaiShould();
@@ -13,15 +13,22 @@ const stub = sinon.stub;
 const noop = () => {};
 
 const port = 6042;
-const PAYLOAD: SequenceEvent = { timestamp: new Date(), name: 'My Custom Alert', message: 'New customer' };
-const INTERNAL_PAYLOAD: APIEventPayload = {
-  type: 'alert',
-  distinctId: 'abcdef',
-  properties: { $library: 'sequence-node', $libraryVersion: version },
+const PAYLOAD: Track = { userId: '1234', timestamp: null, event: 'User Registered' };
+const INTERNAL_PAYLOAD: EventPayload = {
+  type: 'track',
+  userId: 'abcdef',
+  properties: { firstName: 'Tom', lastName: 'Jones' },
+  context: {
+    library: {
+      sdk: 'sequence-node',
+      version: version,
+    },
+  },
   timestamp: new Date(),
-  name: 'My Custom Alert',
-  message: 'New customer',
+  event: 'My Custom Event',
   messageId: 'random',
+  sentAt: null,
+  receivedAt: null,
 };
 
 const createClient = (_options?: SequenceOptions) => {
@@ -47,7 +54,6 @@ before((done) => {
       const { batch } = req.body;
 
       if (!authorization) {
-        // console.log('shut it down 1');
         return res.status(400).json({
           error: { message: 'missing api key' },
         });
@@ -55,24 +61,24 @@ before((done) => {
 
       const ua = req.headers['user-agent'];
       if (ua !== `sequence-node/${version}`) {
-        // console.log('shut it down 2');
         return res.status(400).json({
           error: { message: 'invalid user-agent' },
         });
       }
 
-      if ((batch[0] as APIEventPayload).message === 'Error') {
-        // console.log('shut it down 3');
+      if ((batch[0] as any).message === 'Error') {
         return res.status(400).json({
           error: { message: 'error' },
         });
       }
 
-      if ((batch[0] as APIEventPayload).message === 'Timeout') {
+      if ((batch[0] as any).message === 'Timeout') {
         return setTimeout(() => res.end(), 5000);
       }
 
-      res.json({});
+      res.json({
+        success: true,
+      });
     })
     .listen(port, done);
 });
@@ -126,7 +132,11 @@ describe('enqueue', () => {
     const client = createClient();
 
     const timestamp = new Date();
-    client.enqueue('alert', '1234', { timestamp, name: 'My Custom Alert', message: 'New customer' }, noop);
+    client.enqueue(
+      'track',
+      { userId: '1234', timestamp, event: 'User Registered', messageId: '14oxud1gkpm64vo2' },
+      noop,
+    );
 
     client.queue.length.should.eq(1);
 
@@ -134,15 +144,22 @@ describe('enqueue', () => {
 
     item.should.deep.eq({
       message: {
-        timestamp,
-        type: 'alert',
-        name: 'My Custom Alert',
-        message: 'New customer',
-        properties: {
-          $library: 'sequence-node',
-          $library_version: version,
+        _metadata: {
+          nodeVersion: '16.2.0',
         },
-        distinctId: '1234',
+        timestamp,
+        type: 'track',
+        context: {
+          library: {
+            sdk: 'sequence-node',
+            version: '0.2.0',
+          },
+        },
+        event: 'User Registered',
+        messageId: '14oxud1gkpm64vo2',
+        receivedAt: null,
+        sentAt: null,
+        userId: '1234',
       },
       callback: noop,
     });
@@ -153,15 +170,15 @@ describe('enqueue', () => {
     const flushSpy = spy(client, 'flush');
 
     // flush on first message
-    client.enqueue('alert', '1234', PAYLOAD, noop);
+    client.enqueue('track', PAYLOAD, noop);
     flushSpy.calledOnce.should.be.true;
 
     // shouldn't flush - flushAt is 2
-    client.enqueue('alert', '1234', PAYLOAD, noop);
+    client.enqueue('track', PAYLOAD, noop);
     flushSpy.calledOnce.should.be.true;
 
     // now we flush
-    client.enqueue('alert', '1234', PAYLOAD, noop);
+    client.enqueue('track', PAYLOAD, noop);
     flushSpy.calledTwice.should.be.true;
   });
   it('should flush the queue if it hits the max length', () => {
@@ -173,18 +190,18 @@ describe('enqueue', () => {
 
     const flushStub = stub(client, 'flush');
 
-    client.enqueue('alert', '5678', PAYLOAD);
+    client.enqueue('track', PAYLOAD);
     flushStub.calledOnce.should.be.false;
-    client.enqueue('alert', '5678', PAYLOAD);
+    client.enqueue('track', PAYLOAD);
     flushStub.calledOnce.should.be.false;
-    client.enqueue('alert', '5678', PAYLOAD);
+    client.enqueue('track', PAYLOAD);
     flushStub.calledOnce.should.be.true;
   });
   it('should flush after a period of time', async () => {
     const client = createClient({ flushInterval: 10 });
     const flushStub = stub(client, 'flush');
 
-    client.enqueue('alert', 'abc', PAYLOAD);
+    client.enqueue('track', PAYLOAD);
 
     flushStub.calledOnce.should.be.false;
     await delay(20);
@@ -195,9 +212,9 @@ describe('enqueue', () => {
     const client = createClient({ flushInterval: 10 });
     const flushStub = stub(client, 'flush');
 
-    client.enqueue('alert', 'abc', PAYLOAD);
+    client.enqueue('track', PAYLOAD);
     await delay(5);
-    client.enqueue('alert', 'abc', PAYLOAD);
+    client.enqueue('track', PAYLOAD);
     await delay(5);
 
     flushStub.calledOnce.should.be.true;
@@ -207,7 +224,7 @@ describe('enqueue', () => {
     const flushStub = stub(client, 'flush');
 
     const callback = spy();
-    client.enqueue('alert', '1234', PAYLOAD, callback);
+    client.enqueue('track', PAYLOAD, callback);
     await delay(5);
 
     callback.calledOnce.should.be.true;
@@ -227,9 +244,9 @@ describe('flush', () => {
     const callbackB = spy();
     const callbackC = spy();
 
-    const messageA: APIEventPayload = { ...INTERNAL_PAYLOAD, name: 'Alert Event A' };
-    const messageB: APIEventPayload = { ...INTERNAL_PAYLOAD, name: 'Alert Event B' };
-    const messageC: APIEventPayload = { ...INTERNAL_PAYLOAD, name: 'Alert Event C' };
+    const messageA: EventPayload = { ...INTERNAL_PAYLOAD, event: 'Event A' };
+    const messageB: EventPayload = { ...INTERNAL_PAYLOAD, event: 'Event B' };
+    const messageC: EventPayload = { ...INTERNAL_PAYLOAD, event: 'Event C' };
 
     client.queue = [
       {
@@ -247,8 +264,8 @@ describe('flush', () => {
     ];
 
     const data = await client.flush();
-    Object.keys(data).should.deep.eq(['batch']);
-    data.batch.should.deep.eq([messageA, messageB]);
+    data.data.success.should.eq(true);
+    Object.keys(data).should.deep.eq(['status', 'statusText', 'headers', 'config', 'request', 'data']);
     callbackA.calledOnce.should.be.true;
     callbackB.calledOnce.should.be.true;
     callbackC.called.should.be.false;
@@ -308,24 +325,37 @@ describe('flush', () => {
   });
 });
 
-describe('alert', () => {
+describe('track', () => {
   it('should enqueue a message', () => {
     const client = createClient({
       flushAt: 5,
     });
     client.flushed = true;
     const enqueueSpy = spy(client, 'enqueue');
-    const apiMessage: APIEventPayload = {
-      ...PAYLOAD,
-      distinctId: '1234',
-      type: 'alert',
-      properties: { ...PAYLOAD.properties, $library: 'sequence-node', $libraryVersion: version },
+    const eventPayload = { ...PAYLOAD, messageId: 'random' };
+    const apiMessage: EventPayload = {
+      userId: PAYLOAD.userId,
+      event: PAYLOAD.event,
+      type: 'track',
+      context: {
+        library: {
+          sdk: 'sequence-node',
+          version: version,
+        },
+      },
+      _metadata: {
+        nodeVersion: process.versions.node,
+      },
+      messageId: 'random',
+      receivedAt: null,
+      sentAt: null,
+      timestamp: new Date(),
     };
 
     client.queue.length.should.eq(0);
-    client.alert('1234', PAYLOAD, noop);
+    client.track(eventPayload, noop);
     enqueueSpy.calledOnce.should.be.true;
-    enqueueSpy.firstCall.args.should.deep.eq(['alert', '1234', PAYLOAD, noop]);
+    enqueueSpy.firstCall.args.should.deep.eq(['track', eventPayload, noop]);
     client.queue.should.deep.eq([{ message: apiMessage, callback: noop }]);
   });
 });
@@ -353,11 +383,11 @@ describe('message size', () => {
   it("shouldn't allow messages > 32kb", () => {
     const client = createClient();
 
-    const event: SequenceEvent = { ...PAYLOAD, properties: {} };
+    const event: Track = { ...PAYLOAD, properties: {} };
     for (var i = 0; i < 10000; i++) {
       event.properties[`${i}`] = 'a';
     }
 
-    expect(() => client.alert('12345', event)).to.throw('Your message must be < 32kb.');
+    expect(() => client.track(event)).to.throw('Your message must be < 32kb.');
   });
 });

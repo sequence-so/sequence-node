@@ -7,16 +7,17 @@
     "moduleResolution": "node",
     "sourceMap": true,
     "outDir": "dist",
-    "sourceRoot": "src",
+    "sourceRoot": ".",
     "baseUrl": ".",
     "skipLibCheck": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "lib": ["es2015"],
-    "types": ["node"],
+    "types": ["node", "mocha"],
     "typeRoots": ["./src", "../node_modules/@types"],
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "rootDir": "."
   },
-  "include": ["src/*.ts", "modules.d.ts", "./package.json"],
+  "include": ["src/*.ts", "tests/*.ts", "modules.d.ts", "./package.json"],
   "exclude": ["node_modules", "./node_modules", "./node_modules/*", "./node_modules/@types/node/index.d.ts"]
 }

@@ -1,13 +1,22 @@
-import { APIEventPayload, CallbackFunction, SequenceEvent, SequenceEventType, SequenceOptions } from './types';
+import {
+  EventPayload,
+  CallbackFunction,
+  Track,
+  SequenceEventType,
+  SequenceOptions,
+  Identify,
+  BaseEvent,
+} from './types';
 import assert from 'assert';
 import removeSlash from 'remove-trailing-slash';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { version } from '../package.json';
-import looselyValidate from './event-validation';
-import uuid from 'uuid';
-const generateMessageId = uuid.v4;
+import uniqid from 'uniqid';
 import { QueueItem } from './types';
+import md5 from 'md5';
+import { v4 as uuid } from 'uuid';
+const looselyValidate = require('@segment/loosely-validate-event');
 
 const setImmediate = global.setImmediate || process.nextTick.bind(process);
 const noop = () => {};
@@ -16,6 +25,9 @@ const BATCH_UPLOAD_API = 'event/batch/';
 const DEFAULT_FLUSH_AT = 20;
 const DEFAULT_FLUSH_INTERVAL = 10000;
 
+/**
+ * NodeJS SDK for sending data to Sequence. Accepts track() and identify() calls right now.
+ */
 class Sequence {
   /**
    * Initialize a new `Sequence` with your Sequence project's `apiKey` and an
@@ -68,55 +80,62 @@ class Sequence {
     });
   }
 
-  _validate(message: SequenceEvent, type: SequenceEventType) {
-    looselyValidate(message, type);
+  _validate(event: BaseEvent, type: SequenceEventType) {
+    looselyValidate(event, type);
   }
 
-  /**
-   * Send an alert.
-   *
-   * @param {Object} message
-   * @param {Function} [callback] (optional)
-   * @return {Sequence}
-   */
+  track(event: Track, callback?: CallbackFunction) {
+    this._validate(event, 'track');
+    this.enqueue('track', event, callback);
+    return this;
+  }
 
-  alert(distinctId: string, message: SequenceEvent, callback?: CallbackFunction) {
-    this._validate(message, 'alert');
-    this.enqueue('alert', distinctId, message, callback);
+  identify(event: Identify, callback?: CallbackFunction) {
+    this._validate(event, 'identify');
+    this.enqueue('identify', event, callback);
     return this;
   }
 
   /**
-   * Add a `message` of type `type` to the queue and
-   * check whether it should be flushed.
+   * Add a event to the queue and
+   * checks whether it should be flushed.
    *
-   * @param {String} type
+   * @param {String} event
    * @param {Object} message
    * @param {Function} [callback] (optional)
    * @api private
    */
-
-  enqueue(type: SequenceEventType, distinctId: string, incomingEvent: SequenceEvent, callback?: CallbackFunction) {
+  enqueue(event: SequenceEventType, message: Track | Identify, callback?: CallbackFunction) {
     callback = callback || noop;
 
     if (!this.enable) {
       return setImmediate(callback);
     }
 
-    let event: APIEventPayload = {
-      ...incomingEvent,
-      type: type,
-      distinctId,
-      properties: {
-        ...incomingEvent.properties,
-        $library: 'sequence-node',
-        $libraryVersion: version,
+    let payload: EventPayload = {
+      ...message,
+      _metadata: {
+        nodeVersion: process.versions.node,
       },
-      timestamp: incomingEvent.timestamp ?? new Date(),
-      messageId: generateMessageId(),
+      type: event,
+      userId: message.userId,
+      timestamp: message.timestamp ?? new Date(),
+      messageId: message.messageId ?? uniqid(),
+      context: {
+        library: {
+          sdk: 'sequence-node',
+          version: version,
+        },
+      },
+      sentAt: null,
+      receivedAt: null,
     };
 
-    this.queue.push({ message: event, callback });
+    if (!payload.messageId) {
+      payload.messageId = `node-${md5(JSON.stringify(payload))}-${uuid()}`;
+    }
+
+    this.queue.push({ message: payload, callback });
 
     if (!this.flushed) {
       this.flushed = true;
@@ -140,7 +159,8 @@ class Sequence {
    * @return {Sequence}
    */
 
-  flush(callback?: (error?: Error, data?: any) => void) {
+  async flush(callback?: (error?: Error, data?: any) => void) {
+    const originalCallback = callback;
     callback = callback || noop;
 
     if (!this.enable) {
@@ -158,10 +178,14 @@ class Sequence {
 
     const items = this.queue.splice(0, this.flushAt);
     const callbacks = items.map((item) => item.callback);
-    const messages = items.map((item) => item.message);
+    const messages = items.map((item) => {
+      item.message.sentAt = new Date();
+      return item.message;
+    });
 
     const data = {
       batch: messages,
+      sentAt: new Date(),
     };
 
     const done = (err?: any, data?: any) => {
@@ -185,17 +209,37 @@ class Sequence {
       req.timeout = this.timeout;
     }
 
-    axios(req)
-      .then((res) => done(null, res))
-      .catch((err: any) => {
-        if (err.response) {
-          console.error(err);
-          const error = new Error(err.response.statusText);
-          return done(error);
-        }
+    if (originalCallback) {
+      return axios(req)
+        .then((res) => done(null, res))
+        .catch((err: any) => {
+          if (err.response) {
+            // console.error(err);
+            const error = new Error(err.response.statusText);
+            return done(error);
+          }
 
-        done(err);
-      });
+          done(err);
+        });
+    }
+    return new Promise((resolve, reject) => {
+      axios(req)
+        .then((res) => {
+          done(null, res);
+          resolve(res);
+        })
+        .catch((err: any) => {
+          if (err.response) {
+            // console.error(err);
+            const error = new Error(err.response.statusText);
+            done(error);
+            return reject(error);
+          }
+
+          done(err);
+          reject(err);
+        });
+    });
   }
 
   _isErrorRetryable(error: any) {
