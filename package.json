@@ -1,13 +1,16 @@
 {
   "name": "sequence-node",
   "description": "Node SDK for Sequence",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main": "dist/src/index.js",
   "license": "MIT",
   "author": {
     "name": "Helson Taveras",
     "email": "helson@sequence.so",
     "url": "https://sequence.so"
+  },
+  "repository": {
+    "url": "https://github.com/sequence-so/sequence-node"
   },
   "typings": "./src/types.d.ts",
   "scripts": {
