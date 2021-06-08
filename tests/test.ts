@@ -152,7 +152,7 @@ describe('enqueue', () => {
         context: {
           library: {
             sdk: 'sequence-node',
-            version: '0.2.0',
+            version: version,
           },
         },
         event: 'User Registered',
