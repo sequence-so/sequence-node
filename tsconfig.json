@@ -16,7 +16,8 @@
     "types": ["node", "mocha"],
     "typeRoots": ["./src", "../node_modules/@types"],
     "resolveJsonModule": true,
-    "rootDir": "."
+    "rootDir": ".",
+    "declaration": true
   },
   "include": ["src/*.ts", "tests/*.ts", "modules.d.ts", "./package.json"],
   "exclude": ["node_modules", "./node_modules", "./node_modules/*", "./node_modules/@types/node/index.d.ts"]

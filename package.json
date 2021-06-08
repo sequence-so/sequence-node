@@ -1,8 +1,9 @@
 {
   "name": "sequence-node",
   "description": "Node SDK for Sequence",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "main": "dist/src/index.js",
+  "typings": "dist/src/index.d.ts",
   "license": "MIT",
   "author": {
     "name": "Helson Taveras",
@@ -12,7 +13,6 @@
   "repository": {
     "url": "https://github.com/sequence-so/sequence-node"
   },
-  "typings": "./src/types.ts",
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc -w",
