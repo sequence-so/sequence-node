@@ -12,7 +12,7 @@
   "repository": {
     "url": "https://github.com/sequence-so/sequence-node"
   },
-  "typings": "./src/types.d.ts",
+  "typings": "./src/types.ts",
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc -w",
