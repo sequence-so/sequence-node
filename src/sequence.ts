@@ -20,7 +20,7 @@ const looselyValidate = require('@segment/loosely-validate-event');
 
 const setImmediate = global.setImmediate || process.nextTick.bind(process);
 const noop = () => {};
-const DEFAULT_HOST = 'https://e.sequence.com';
+const DEFAULT_HOST = 'https://e.sequence.so';
 const BATCH_UPLOAD_API = 'event/batch/';
 const DEFAULT_FLUSH_AT = 20;
 const DEFAULT_FLUSH_INTERVAL = 10000;
@@ -37,7 +37,7 @@ class Sequence {
    * @param {Object} [options] (optional)
    *   @property {Number} flushAt (default: 20)
    *   @property {Number} flushInterval (default: 10000)
-   *   @property {String} host (default: 'https://e.sequence.com')
+   *   @property {String} host (default: 'https://e.sequence.so')
    *   @property {Boolean} enable (default: true)
    */
   queue: QueueItem[];
@@ -48,8 +48,17 @@ class Sequence {
    * Minimum number of items in queue to flush at.
    */
   flushAt: number;
+  /**
+   * A timeout for automatically flushing events.
+   */
   flushInterval: number;
+  /**
+   * Tracks if the queue has been flushed at least once
+   */
   flushed: boolean;
+  /**
+   * Enables flushing events to Sequence. Setting to false means events will not be pushed.
+   */
   enable: boolean;
   timer: NodeJS.Timeout;
   constructor(apiKey: string, _options?: SequenceOptions) {
@@ -97,8 +106,7 @@ class Sequence {
   }
 
   /**
-   * Add a event to the queue and
-   * checks whether it should be flushed.
+   * Add a event to the queue and checks whether it should be flushed.
    *
    * @param {String} event
    * @param {Object} message

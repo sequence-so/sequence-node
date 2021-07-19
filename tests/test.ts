@@ -104,7 +104,7 @@ describe('constructor', () => {
   it('default options', () => {
     const client = new Sequence('key');
     client.apiKey.should.eq('key');
-    client.host.should.eq('https://e.sequence.com');
+    client.host.should.eq('https://e.sequence.so');
     client.flushAt.should.eq(20);
     client.flushInterval.should.eq(10000);
   });
@@ -327,6 +327,7 @@ describe('flush', () => {
 
 describe('track', () => {
   it('should enqueue a message', () => {
+    const clock = sinon.useFakeTimers();
     const client = createClient({
       flushAt: 5,
     });
@@ -357,6 +358,7 @@ describe('track', () => {
     enqueueSpy.calledOnce.should.be.true;
     enqueueSpy.firstCall.args.should.deep.eq(['track', eventPayload, noop]);
     client.queue.should.deep.eq([{ message: apiMessage, callback: noop }]);
+    clock.restore();
   });
 });
 

@@ -39,7 +39,7 @@ export interface Track extends BaseEvent {
   properties?: Record<string, any>;
 }
 
-export interface Identify extends BaseEvent {
+export interface Identify extends Omit<BaseEvent, 'properties'> {
   /**
    * Custom traits on the user.
    */
